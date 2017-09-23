@@ -112,6 +112,7 @@ class MyWindow(Gtk.Window):
         tagRow = self.findTag(tagName)
 
         if tagRow and tagRow[1]: # already tagged
+            self.tag_edit.set_text("")
             return
 
         if self.tagFile(tagName):
