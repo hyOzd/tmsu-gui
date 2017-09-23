@@ -1,0 +1,9 @@
+[Nemo Action]
+
+Name=Tags
+Exec=<tags.py %F>
+Icon-Name=folder
+Selection=s
+Extensions=nodirs;
+Dependencies=tmsu;
+Quote=single
