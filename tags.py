@@ -87,6 +87,7 @@ class MyWindow(Gtk.Window):
 
         hbox = Gtk.Box(orientation = Gtk.Orientation.HORIZONTAL)
         self.tag_edit = Gtk.Entry()
+        self.tag_edit.connect('activate', self.on_add_clicked)
         self.add_button = Gtk.Button(label = "Add")
         self.add_button.connect('clicked', self.on_add_clicked)
         hbox.pack_start(self.tag_edit, True, True, 0)
