@@ -27,13 +27,13 @@ class Tmsu:
         if fileName:
             # Note: tmsu behaves differently for 'tags' command when used
             # interactively and called from scripts.
-            r = self._cmd('tags -n {}'.format(fileName))
+            r = self._cmd('tags -n "{}"'.format(fileName))
             return r.split(':')[1].split()
         return self._cmd('tags').splitlines()
 
     def tag(self, fileName, tagName):
         try:
-            self._cmd('tag {} {}'.format(fileName, tagName))
+            self._cmd('tag "{}" {}'.format(fileName, tagName))
             return True
         except sp.CalledProcessError as e:
             print("Failed to tag file.")
@@ -41,7 +41,7 @@ class Tmsu:
 
     def untag(self, fileName, tagName):
         try:
-            self._cmd('untag {} {}'.format(fileName, tagName))
+            self._cmd('untag "{}" {}'.format(fileName, tagName))
             return True
         except sp.CalledProcessError as e:
             print("Failed to untag file.")
