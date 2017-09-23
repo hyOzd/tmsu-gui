@@ -88,6 +88,7 @@ class MyWindow(Gtk.Window):
         hbox = Gtk.Box(orientation = Gtk.Orientation.HORIZONTAL)
         self.tag_edit = Gtk.Entry()
         self.add_button = Gtk.Button(label = "Add")
+        self.add_button.connect('clicked', self.on_add_clicked)
         hbox.pack_start(self.tag_edit, True, True, 0)
         hbox.pack_end(self.add_button, False, False, 0)
         self.vbox.pack_end(hbox, False, False, 0)
@@ -105,25 +106,50 @@ class MyWindow(Gtk.Window):
         # toggle
         if r: self.store[path][1] = not self.store[path][1]
 
+    def on_add_clicked(self, widget):
+        tagName = self.tag_edit.get_text()
+        tagRow = self.findTag(tagName)
+
+        if tagRow and tagRow[1]: # already tagged
+            return
+
+        if self.tagFile(tagName):
+            self.tag_edit.set_text("")
+            if tagRow:              # tag already exists
+                tagRow[1] = True
+            else:                   # new tag
+                self.store.append([tagName, True])
+
+    def findTag(self, tagName):
+        """Find a tag in current listing."""
+        for row in self.store:
+            if row[0] == tagName:
+                return row
+        return None
+
     def tagFile(self, tagName):
+        """Tags a file and shows error message if fails."""
         if not self.tmsu.tag(self.fileName, tagName):
             self.displayError("Failed to tag file.")
             return False
         return True
 
     def untagFile(self, tagName):
+        """Untags a file and shows error message if fails."""
         if not self.tmsu.untag(self.fileName, tagName):
             self.displayError("Failed to untag file.")
             return False
         return True
 
     def loadTags(self):
+        """Loads tags for the first time."""
         allTags = self.tmsu.tags()
         fileTags = self.tmsu.tags(self.fileName)
         for tag in allTags:
             self.store.append([tag, tag in fileTags])
 
     def displayError(self, msg):
+        """Display given error message in a message box."""
         dialog = Gtk.MessageDialog(
             self, Gtk.DialogFlags.MODAL, Gtk.MessageType.ERROR,
             Gtk.ButtonsType.CLOSE, msg)
