@@ -11,9 +11,9 @@ class Tmsu:
 
     def info(self):
         try:
-            r = sp.check_output('tmsu info', shell=True).decode('utf-8')
+            r = self._cmd('info')
         except sp.CalledProcessError as e:
-            if e.returncode:
+            if e.returncode == 1: # database doesn't exist
                 return None
         lines = r.splitlines()
         def psplit(l): return map(lambda x: x.strip(), l.split(':'))
@@ -22,6 +22,17 @@ class Tmsu:
         return {'root': d['Root path'],
                 'size': d['Size'],
                 'database':d['Database']}
+
+    def tags(self, fileName=None):
+        if fileName:
+            # Note: tmsu behaves differently for 'tags' command when used
+            # interactively and called from scripts.
+            r = self._cmd('tags -n {}'.format(fileName))
+            return r.split(':')[1].split()
+        return self._cmd('tags').splitlines()
+
+    def _cmd(self, cmd):
+        return sp.check_output('tmsu ' + cmd, shell=True).decode('utf-8')
 
     @staticmethod
     def findTmsu():
@@ -77,6 +88,7 @@ if __name__ == "__main__":
         dialog.run()
     else:
         print(tmsu.info())
+        print(tmsu.tags("testfile"))
         win = MyWindow()
         win.connect('delete-event', Gtk.main_quit)
         win.show_all()
