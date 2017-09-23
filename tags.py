@@ -70,18 +70,20 @@ class MyWindow(Gtk.Window):
         self.vbox = Gtk.Box(parent = self,
                             orientation = Gtk.Orientation.VERTICAL)
         self.store = Gtk.ListStore(str, bool)
-
+        # self.store.set_sort_column_id(1, Gtk.SortType.DESCENDING)
 
         # tag name column
         self.list_widget = Gtk.TreeView(self.store)
-        col = Gtk.TreeViewColumn("Tags", Gtk.CellRendererText(editable=True), text=0)
+        col = Gtk.TreeViewColumn("Tag", Gtk.CellRendererText(editable=True), text=0)
         col.set_expand(True)
+        col.set_sort_column_id(0)
         self.list_widget.append_column(col)
 
         # 'tagged' checkbox column
         cell = Gtk.CellRendererToggle()
         cell.connect("toggled", self.on_cell_toggled)
-        col = Gtk.TreeViewColumn("Checked", cell, active=1)
+        col = Gtk.TreeViewColumn("", cell, active=1)
+        col.set_sort_column_id(1)
         self.list_widget.append_column(col)
         self.vbox.pack_start(self.list_widget, True, True, 0)
 
@@ -152,8 +154,12 @@ class MyWindow(Gtk.Window):
         """Loads tags for the first time."""
         allTags = self.tmsu.tags()
         fileTags = self.tmsu.tags(self.fileName)
+        for tag in fileTags:
+            self.store.append([tag, True])
         for tag in allTags:
-            self.store.append([tag, tag in fileTags])
+            if not tag in fileTags:
+                self.store.append([tag, False])
+
 
     def displayError(self, msg):
         """Display given error message in a message box."""
