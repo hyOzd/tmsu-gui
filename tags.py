@@ -3,6 +3,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 
+import sys, os
 import subprocess as sp
 
 class Tmsu:
@@ -160,7 +161,6 @@ class MyWindow(Gtk.Window):
             if not tag in fileTags:
                 self.store.append([tag, False])
 
-
     def displayError(self, msg):
         """Display given error message in a message box."""
         dialog = Gtk.MessageDialog(
@@ -174,8 +174,14 @@ if __name__ == "__main__":
     tmsu = Tmsu.findTmsu()
     if not tmsu:
         err = "tmsu executable not found!"
-    elif tmsu.info() == None:
-        err = "No tmsu database is found."
+    elif len(sys.argv) !=2:
+        err = "Invalid arguments."
+    else:
+        fileName = sys.argv[1]
+        os.chdir(os.path.dirname(fileName))
+        if tmsu.info() == None:
+            err = "No tmsu database is found."
+
 
     if err:
         dialog = Gtk.MessageDialog(
@@ -183,9 +189,8 @@ if __name__ == "__main__":
             Gtk.ButtonsType.OK, err)
         dialog.run()
     else:
-        print(tmsu.info())
-        print(tmsu.tags("testfile"))
-        win = MyWindow(tmsu, "testfile2")
+
+        win = MyWindow(tmsu, sys.argv[1])
         win.connect('delete-event', Gtk.main_quit)
         win.show_all()
         Gtk.main()
