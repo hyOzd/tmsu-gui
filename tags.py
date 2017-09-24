@@ -116,8 +116,9 @@ class MyWindow(Gtk.Window):
         self.list_widget.append_column(col)
 
         # tag value column
-        col = Gtk.TreeViewColumn("Value", Gtk.CellRendererText(editable=True),
-                                 text=TagCol.VALUE)
+        cell = Gtk.CellRendererText(editable=True)
+        cell.connect("edited", self.on_tagValue_edited)
+        col = Gtk.TreeViewColumn("Value", cell, text=TagCol.VALUE)
         col.set_expand(True)
         col.set_sort_column_id(TagCol.VALUE)
         self.list_widget.append_column(col)
@@ -161,6 +162,17 @@ class MyWindow(Gtk.Window):
         if self.renameTag(tagName, newName):
             self.store[path][TagCol.NAME] = newName
 
+    def on_tagValue_edited(self, widget, path, value):
+        tagName = self.store[path][TagCol.NAME]
+        isTagged = self.store[path][TagCol.TAGGED]
+        oldValue = self.store[path][TagCol.VALUE]
+        if isTagged and (not oldValue or not value):        # not a value tag, untag to prevent duplicate
+            if not self.untagFile(tagName, oldValue):
+                return
+        if self.tagFile(tagName, value):
+            self.store[path][TagCol.VALUE] = value
+            self.store[path][TagCol.TAGGED] = True
+
     def on_add_clicked(self, widget):
         tagName = self.tag_edit.get_text().strip()
         tagValue = self.value_edit.get_text().strip()
@@ -169,6 +181,9 @@ class MyWindow(Gtk.Window):
             return
 
         tagRow = self.findTag(tagName)
+        if tagRow and tagRow[TagCol.VALUE] and not tagValue:
+            self.displayError("You need to enter a value for this tag!")
+            return
 
         if self.tagFile(tagName, tagValue):
             self.tag_edit.set_text("")
@@ -193,7 +208,7 @@ class MyWindow(Gtk.Window):
             return False
         return True
 
-    def untagFile(self, tagName, tagValue):
+    def untagFile(self, tagName, tagValue=None):
         """Untags a file and shows error message if fails."""
         if not self.tmsu.untag(self.fileName, tagName, tagValue):
             self.displayError("Failed to untag file.")
