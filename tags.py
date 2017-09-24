@@ -156,11 +156,7 @@ class MyWindow(Gtk.Window):
         self.value_edit = Gtk.Entry()
         self.value_edit.set_placeholder_text("Value")
         self.value_edit.connect('activate', self.on_add_clicked)
-        completion = Gtk.EntryCompletion(model=self.store)
-        completion.set_text_column(TagCol.VALUE)
-        completion.set_inline_completion(True)
-        completion.set_match_func(self.value_edit_compl_match)
-        self.value_edit.set_completion(completion)
+        self.value_edit.connect('focus-in-event', self.on_value_edit_focus)
 
         # tag add button
         self.add_button = Gtk.Button(label = "Add")
@@ -219,13 +215,22 @@ class MyWindow(Gtk.Window):
             completion.set_inline_completion(True)
             editable.set_completion(completion)
 
-    def value_edit_compl_match(self, compl, key, it):
-        rowTag = self.store.get_value(it, TagCol.NAME)
-        editTag = self.tag_edit.get_text()
-        if editTag and rowTag == editTag:
-            return True
-        else:
-            return False
+    def on_value_edit_focus(self, widget, ev):
+        self.value_edit.set_completion(None)
+
+        tagName = self.tag_edit.get_text()
+        if tagName:
+            options = self.tmsu.values(tagName)
+            if options:
+                store = Gtk.ListStore(str)
+                for val in options:
+                    store.append([val])
+                completion = Gtk.EntryCompletion(model=store)
+                completion.set_text_column(0)
+                completion.set_inline_completion(True)
+                self.value_edit.set_completion(completion)
+
+        return False
 
     def on_add_clicked(self, widget):
         tagName = self.tag_edit.get_text().strip()
