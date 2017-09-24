@@ -59,6 +59,14 @@ class Tmsu:
             print("Failed to untag file.")
             return False
 
+    def rename(self, tagName, newName):
+        try:
+            self._cmd('rename {} {}'.format(tagName, newName))
+            return True
+        except sp.CalledProcessError as e:
+            print("Failed to rename tag.")
+            return False
+
     def _cmd(self, cmd):
         return sp.check_output('tmsu ' + cmd, shell=True).decode('utf-8')
 
@@ -99,9 +107,9 @@ class MyWindow(Gtk.Window):
         self.list_widget.append_column(col)
 
         # tag name column
-        # TODO: ability to 'rename' tag
-        col = Gtk.TreeViewColumn("Tag", Gtk.CellRendererText(editable=True),
-                                 text=TagCol.NAME)
+        cell = Gtk.CellRendererText(editable=True)
+        cell.connect("edited", self.on_tagName_edited)
+        col = Gtk.TreeViewColumn("Tag", cell, text=TagCol.NAME)
         col.set_expand(True)
         col.set_sort_column_id(TagCol.NAME)
         self.list_widget.append_column(col)
@@ -143,6 +151,11 @@ class MyWindow(Gtk.Window):
             self.store[path][TagCol.TAGGED] = not self.store[path][TagCol.TAGGED]
             if isTagged: self.store[path][TagCol.VALUE] = ""
 
+    def on_tagName_edited(self, widget, path, newName):
+        tagName = self.store[path][TagCol.NAME]
+        if self.renameTag(tagName, newName):
+            self.store[path][TagCol.NAME] = newName
+
     def on_add_clicked(self, widget):
         tagName = self.tag_edit.get_text().strip()
         if len(tagName) == 0:
@@ -180,6 +193,14 @@ class MyWindow(Gtk.Window):
         """Untags a file and shows error message if fails."""
         if not self.tmsu.untag(self.fileName, tagName, tagValue):
             self.displayError("Failed to untag file.")
+            return False
+        return True
+
+    def renameTag(self, tagName, newName):
+        """Renames a tag and shows error message if fails."""
+        # TODO: if tagname already exists show merge warning
+        if not self.tmsu.rename(tagName, newName):
+            self.displayError("Failed to rename tag.")
             return False
         return True
 
