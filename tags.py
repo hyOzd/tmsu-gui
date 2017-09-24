@@ -116,7 +116,11 @@ class MyWindow(Gtk.Window):
         if r: self.store[path][1] = not self.store[path][1]
 
     def on_add_clicked(self, widget):
-        tagName = self.tag_edit.get_text()
+        tagName = self.tag_edit.get_text().strip()
+        if len(tagName) == 0:
+            self.displayError("Enter a tag name!")
+            return
+
         tagRow = self.findTag(tagName)
 
         if tagRow and tagRow[1]: # already tagged
