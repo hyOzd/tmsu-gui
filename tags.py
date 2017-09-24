@@ -157,6 +157,7 @@ class MyWindow(Gtk.Window):
         self.value_edit.set_placeholder_text("Value")
         self.value_edit.connect('activate', self.on_add_clicked)
         self.value_edit.connect('focus-in-event', self.on_value_edit_focus)
+        self.value_edit.connect('focus-out-event', self.on_value_edit_focus_out)
 
         # tag add button
         self.add_button = Gtk.Button(label = "Add")
@@ -216,8 +217,6 @@ class MyWindow(Gtk.Window):
             editable.set_completion(completion)
 
     def on_value_edit_focus(self, widget, ev):
-        self.value_edit.set_completion(None)
-
         tagName = self.tag_edit.get_text()
         if tagName:
             options = self.tmsu.values(tagName)
@@ -229,7 +228,10 @@ class MyWindow(Gtk.Window):
                 completion.set_text_column(0)
                 completion.set_inline_completion(True)
                 self.value_edit.set_completion(completion)
+        return False
 
+    def on_value_edit_focus_out(self, widget, ev):
+        widget.set_completion(None)
         return False
 
     def on_add_clicked(self, widget):
@@ -240,11 +242,17 @@ class MyWindow(Gtk.Window):
             return
 
         tagRow = self.findTag(tagName)
-        if tagRow and tagRow[TagCol.VALUE] and not tagValue:
-            self.displayError("You need to enter a value for this tag!")
-            return
+        if tagRow:
+            oldValue = tagRow[TagCol.VALUE]
+            if oldValue and not tagValue:
+                self.displayError("You need to enter a value for this tag!")
+                return
+            else:
+                if not self.untagFile(tagName, oldValue):
+                    return
 
         if self.tagFile(tagName, tagValue):
+            self.tag_edit.grab_focus()
             self.tag_edit.set_text("")
             self.value_edit.set_text("")
             if tagRow:              # tag already exists
