@@ -25,12 +25,22 @@ class Tmsu:
                 'database':d['Database']}
 
     def tags(self, fileName=None):
+        """Returns a list of tags. If fileName is provided, list item is a tuple of
+        (tagname, value) pair."""
         if fileName:
             # Note: tmsu behaves differently for 'tags' command when used
-            # interactively and called from scripts.
+            # interactively and called from scripts. That's why we add '-n'.
             r = self._cmd('tags -n "{}"'.format(fileName))
-            return r.split(':')[1].split()
-        return self._cmd('tags').splitlines()
+            tag_value = []
+            for tag in r.split(':')[1].split():
+                tv = tag.split("=")
+                if len(tv) > 1:
+                    tag_value.append((tv[0], tv[1]))
+                else:
+                    tag_value.append((tv[0], ""))
+            return tag_value
+        else:
+            return self._cmd('tags').splitlines()
 
     def tag(self, fileName, tagName):
         try:
@@ -40,9 +50,10 @@ class Tmsu:
             print("Failed to tag file.")
             return False
 
-    def untag(self, fileName, tagName):
+    def untag(self, fileName, tagName, value=None):
         try:
-            self._cmd('untag "{}" {}'.format(fileName, tagName))
+            self._cmd('untag "{}" {}{}'.format(fileName, tagName,
+                                               "="+value if value else ""))
             return True
         except sp.CalledProcessError as e:
             print("Failed to untag file.")
@@ -63,7 +74,8 @@ class Tmsu:
 @enum.unique
 class TagCol(enum.IntEnum):
     TAGGED = 0
-    TAGNAME = 1
+    NAME = 1
+    VALUE = 2
 
 class MyWindow(Gtk.Window):
     def __init__(self, tmsu, fileName):
@@ -75,7 +87,7 @@ class MyWindow(Gtk.Window):
         self.set_size_request(300, 400)
         self.vbox = Gtk.Box(parent = self,
                             orientation = Gtk.Orientation.VERTICAL)
-        self.store = Gtk.ListStore(bool, str)
+        self.store = Gtk.ListStore(bool, str, str)
         self.list_widget = Gtk.TreeView(self.store)
         self.vbox.pack_start(self.list_widget, True, True, 0)
 
@@ -87,17 +99,25 @@ class MyWindow(Gtk.Window):
         self.list_widget.append_column(col)
 
         # tag name column
+        # TODO: ability to 'rename' tag
         col = Gtk.TreeViewColumn("Tag", Gtk.CellRendererText(editable=True),
-                                 text=TagCol.TAGNAME)
+                                 text=TagCol.NAME)
         col.set_expand(True)
-        col.set_sort_column_id(TagCol.TAGNAME)
+        col.set_sort_column_id(TagCol.NAME)
+        self.list_widget.append_column(col)
+
+        # tag value column
+        col = Gtk.TreeViewColumn("Value", Gtk.CellRendererText(editable=True),
+                                 text=TagCol.VALUE)
+        col.set_expand(True)
+        col.set_sort_column_id(TagCol.VALUE)
         self.list_widget.append_column(col)
 
         hbox = Gtk.Box(orientation = Gtk.Orientation.HORIZONTAL)
         self.tag_edit = Gtk.Entry()
         self.tag_edit.connect('activate', self.on_add_clicked)
         completion = Gtk.EntryCompletion(model=self.store)
-        completion.set_text_column(TagCol.TAGNAME)
+        completion.set_text_column(TagCol.NAME)
         completion.set_inline_completion(True)
         self.tag_edit.set_completion(completion)
 
@@ -110,15 +130,18 @@ class MyWindow(Gtk.Window):
         self.loadTags()
 
     def on_cell_toggled(self, widget, path):
-        tagName = self.store[path][TagCol.TAGNAME]
+        tagName = self.store[path][TagCol.NAME]
         isTagged = self.store[path][TagCol.TAGGED]
         if not isTagged:
             r = self.tagFile(tagName)
         else:
-            r = self.untagFile(tagName)
+            tagValue = self.store[path][TagCol.VALUE]
+            r = self.untagFile(tagName, tagValue)
 
         # toggle
-        if r: self.store[path][TagCol.TAGGED] = not self.store[path][TagCol.TAGGED]
+        if r:
+            self.store[path][TagCol.TAGGED] = not self.store[path][TagCol.TAGGED]
+            if isTagged: self.store[path][TagCol.VALUE] = ""
 
     def on_add_clicked(self, widget):
         tagName = self.tag_edit.get_text().strip()
@@ -142,7 +165,7 @@ class MyWindow(Gtk.Window):
     def findTag(self, tagName):
         """Find a tag in current listing."""
         for row in self.store:
-            if row[TagCol.TAGNAME] == tagName:
+            if row[TagCol.NAME] == tagName:
                 return row
         return None
 
@@ -153,9 +176,9 @@ class MyWindow(Gtk.Window):
             return False
         return True
 
-    def untagFile(self, tagName):
+    def untagFile(self, tagName, tagValue):
         """Untags a file and shows error message if fails."""
-        if not self.tmsu.untag(self.fileName, tagName):
+        if not self.tmsu.untag(self.fileName, tagName, tagValue):
             self.displayError("Failed to untag file.")
             return False
         return True
@@ -164,11 +187,13 @@ class MyWindow(Gtk.Window):
         """Loads tags for the first time."""
         allTags = self.tmsu.tags()
         fileTags = self.tmsu.tags(self.fileName)
+        fileTagNames=[]
         for tag in fileTags:
-            self.store.append([True, tag])
+            self.store.append([True, tag[0], tag[1]])
+            fileTagNames.append(tag[0])
         for tag in allTags:
-            if not tag in fileTags:
-                self.store.append([False, tag])
+            if not tag in fileTagNames:
+                self.store.append([False, tag, ""])
 
     def displayError(self, msg):
         """Display given error message in a message box."""
