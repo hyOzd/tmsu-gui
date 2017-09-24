@@ -142,6 +142,8 @@ class MyWindow(Gtk.Window):
         self.list_widget.append_column(col)
 
         hbox = Gtk.Box(orientation = Gtk.Orientation.HORIZONTAL)
+
+        # tag name edit
         self.tag_edit = Gtk.Entry()
         self.tag_edit.set_placeholder_text("Tag")
         self.tag_edit.connect('activate', self.on_add_clicked)
@@ -150,10 +152,17 @@ class MyWindow(Gtk.Window):
         completion.set_inline_completion(True)
         self.tag_edit.set_completion(completion)
 
+        # tag value edit
         self.value_edit = Gtk.Entry()
         self.value_edit.set_placeholder_text("Value")
         self.value_edit.connect('activate', self.on_add_clicked)
+        completion = Gtk.EntryCompletion(model=self.store)
+        completion.set_text_column(TagCol.VALUE)
+        completion.set_inline_completion(True)
+        completion.set_match_func(self.value_edit_compl_match)
+        self.value_edit.set_completion(completion)
 
+        # tag add button
         self.add_button = Gtk.Button(label = "Add")
         self.add_button.connect('clicked', self.on_add_clicked)
         hbox.pack_start(self.tag_edit, True, True, 0)
@@ -209,6 +218,14 @@ class MyWindow(Gtk.Window):
             completion.set_text_column(0)
             completion.set_inline_completion(True)
             editable.set_completion(completion)
+
+    def value_edit_compl_match(self, compl, key, it):
+        rowTag = self.store.get_value(it, TagCol.NAME)
+        editTag = self.tag_edit.get_text()
+        if editTag and rowTag == editTag:
+            return True
+        else:
+            return False
 
     def on_add_clicked(self, widget):
         tagName = self.tag_edit.get_text().strip()
