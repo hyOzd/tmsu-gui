@@ -109,6 +109,7 @@ class MyWindow(Gtk.Window):
         self.tmsu = tmsu
         self.fileName = fileName
 
+        self.connect('key-press-event', self.on_key_press)
         self.set_size_request(300, 400)
         self.vbox = Gtk.Box(parent = self,
                             orientation = Gtk.Orientation.VERTICAL)
@@ -122,7 +123,7 @@ class MyWindow(Gtk.Window):
         col = Gtk.TreeViewColumn("", cell, active=TagCol.TAGGED)
         col.set_sort_column_id(TagCol.TAGGED)
         self.list_widget.append_column(col)
-        self.list_widget.connect('key-press-event', self.on_key_press)
+        self.list_widget.connect('key-press-event', self.on_lw_key_press)
 
         # tag name column
         cell = Gtk.CellRendererText(editable=True)
@@ -264,6 +265,14 @@ class MyWindow(Gtk.Window):
                 self.store.append([True, tagName, tagValue])
 
     def on_key_press(self, widget, ev):
+        key = Gdk.keyval_name(ev.keyval)
+        ctrl = int(ev.state) & Gdk.ModifierType.CONTROL_MASK
+        if ctrl and key == 'q':
+            Gtk.main_quit()
+            return True
+        return False
+
+    def on_lw_key_press(self, widget, ev):
         key = Gdk.keyval_name(ev.keyval)
         if key == 'Delete':
             self.on_delete_key()
