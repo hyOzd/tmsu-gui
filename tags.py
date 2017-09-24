@@ -243,13 +243,15 @@ class MyWindow(Gtk.Window):
 
         tagRow = self.findTag(tagName)
         if tagRow:
-            oldValue = tagRow[TagCol.VALUE]
-            if oldValue and not tagValue:
-                self.displayError("You need to enter a value for this tag!")
-                return
-            else:
-                if not self.untagFile(tagName, oldValue):
+            isTagged = tagRow[TagCol.TAGGED]
+            if isTagged:
+                oldValue = tagRow[TagCol.VALUE]
+                if oldValue and not tagValue:
+                    self.displayError("You need to enter a value for this tag!")
                     return
+                else:
+                    if not self.untagFile(tagName, oldValue):
+                        return
 
         if self.tagFile(tagName, tagValue):
             self.tag_edit.grab_focus()
