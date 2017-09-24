@@ -177,6 +177,7 @@ class MyWindow(Gtk.Window):
 
     def on_tagName_edited(self, widget, path, newName):
         tagName = self.store[path][TagCol.NAME]
+        if newName == tagName: return
         if self.renameTag(tagName, newName):
             self.store[path][TagCol.NAME] = newName
 
@@ -184,6 +185,7 @@ class MyWindow(Gtk.Window):
         tagName = self.store[path][TagCol.NAME]
         isTagged = self.store[path][TagCol.TAGGED]
         oldValue = self.store[path][TagCol.VALUE]
+        if value == oldValue: return
         if isTagged:        # untag to prevent duplicate
             if not self.untagFile(tagName, oldValue):
                 return
