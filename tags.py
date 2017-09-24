@@ -3,7 +3,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 
-import sys, os
+import sys, os, enum
 import subprocess as sp
 
 class Tmsu:
@@ -60,6 +60,11 @@ class Tmsu:
         else:
             return None
 
+@enum.unique
+class TagCol(enum.IntEnum):
+    TAGGED = 0
+    TAGNAME = 1
+
 class MyWindow(Gtk.Window):
     def __init__(self, tmsu, fileName):
         Gtk.Window.__init__(self, title="Tags")
@@ -70,29 +75,29 @@ class MyWindow(Gtk.Window):
         self.set_size_request(300, 400)
         self.vbox = Gtk.Box(parent = self,
                             orientation = Gtk.Orientation.VERTICAL)
-        self.store = Gtk.ListStore(str, bool)
-        # self.store.set_sort_column_id(1, Gtk.SortType.DESCENDING)
-
-        # tag name column
+        self.store = Gtk.ListStore(bool, str)
         self.list_widget = Gtk.TreeView(self.store)
-        col = Gtk.TreeViewColumn("Tag", Gtk.CellRendererText(editable=True), text=0)
-        col.set_expand(True)
-        col.set_sort_column_id(0)
-        self.list_widget.append_column(col)
+        self.vbox.pack_start(self.list_widget, True, True, 0)
 
         # 'tagged' checkbox column
         cell = Gtk.CellRendererToggle()
         cell.connect("toggled", self.on_cell_toggled)
-        col = Gtk.TreeViewColumn("", cell, active=1)
-        col.set_sort_column_id(1)
+        col = Gtk.TreeViewColumn("", cell, active=TagCol.TAGGED)
+        col.set_sort_column_id(TagCol.TAGGED)
         self.list_widget.append_column(col)
-        self.vbox.pack_start(self.list_widget, True, True, 0)
+
+        # tag name column
+        col = Gtk.TreeViewColumn("Tag", Gtk.CellRendererText(editable=True),
+                                 text=TagCol.TAGNAME)
+        col.set_expand(True)
+        col.set_sort_column_id(TagCol.TAGNAME)
+        self.list_widget.append_column(col)
 
         hbox = Gtk.Box(orientation = Gtk.Orientation.HORIZONTAL)
         self.tag_edit = Gtk.Entry()
         self.tag_edit.connect('activate', self.on_add_clicked)
         completion = Gtk.EntryCompletion(model=self.store)
-        completion.set_text_column(0)
+        completion.set_text_column(TagCol.TAGNAME)
         completion.set_inline_completion(True)
         self.tag_edit.set_completion(completion)
 
@@ -105,15 +110,15 @@ class MyWindow(Gtk.Window):
         self.loadTags()
 
     def on_cell_toggled(self, widget, path):
-        tagName = self.store[path][0]
-        isTagged = self.store[path][1]
+        tagName = self.store[path][TagCol.TAGNAME]
+        isTagged = self.store[path][TagCol.TAGGED]
         if not isTagged:
             r = self.tagFile(tagName)
         else:
             r = self.untagFile(tagName)
 
         # toggle
-        if r: self.store[path][1] = not self.store[path][1]
+        if r: self.store[path][TagCol.TAGGED] = not self.store[path][TagCol.TAGGED]
 
     def on_add_clicked(self, widget):
         tagName = self.tag_edit.get_text().strip()
@@ -123,21 +128,21 @@ class MyWindow(Gtk.Window):
 
         tagRow = self.findTag(tagName)
 
-        if tagRow and tagRow[1]: # already tagged
+        if tagRow and tagRow[TagCol.TAGGED]: # already tagged
             self.tag_edit.set_text("")
             return
 
         if self.tagFile(tagName):
             self.tag_edit.set_text("")
             if tagRow:              # tag already exists
-                tagRow[1] = True
+                tagRow[TagCol.TAGGED] = True
             else:                   # new tag
-                self.store.append([tagName, True])
+                self.store.append([True, tagName])
 
     def findTag(self, tagName):
         """Find a tag in current listing."""
         for row in self.store:
-            if row[0] == tagName:
+            if row[TagCol.TAGNAME] == tagName:
                 return row
         return None
 
@@ -160,10 +165,10 @@ class MyWindow(Gtk.Window):
         allTags = self.tmsu.tags()
         fileTags = self.tmsu.tags(self.fileName)
         for tag in fileTags:
-            self.store.append([tag, True])
+            self.store.append([True, tag])
         for tag in allTags:
             if not tag in fileTags:
-                self.store.append([tag, False])
+                self.store.append([False, tag])
 
     def displayError(self, msg):
         """Display given error message in a message box."""
