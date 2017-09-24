@@ -42,9 +42,10 @@ class Tmsu:
         else:
             return self._cmd('tags').splitlines()
 
-    def tag(self, fileName, tagName):
+    def tag(self, fileName, tagName, value=None):
         try:
-            self._cmd('tag "{}" {}'.format(fileName, tagName))
+            self._cmd('tag "{}" {}{}'.format(fileName, tagName,
+                                             "="+value if value else ""))
             return True
         except sp.CalledProcessError as e:
             print("Failed to tag file.")
@@ -129,9 +130,13 @@ class MyWindow(Gtk.Window):
         completion.set_inline_completion(True)
         self.tag_edit.set_completion(completion)
 
+        self.value_edit = Gtk.Entry()
+        self.value_edit.connect('activate', self.on_add_clicked)
+
         self.add_button = Gtk.Button(label = "Add")
         self.add_button.connect('clicked', self.on_add_clicked)
         hbox.pack_start(self.tag_edit, True, True, 0)
+        hbox.pack_start(self.value_edit, True, True, 0)
         hbox.pack_end(self.add_button, False, False, 0)
         self.vbox.pack_end(hbox, False, False, 0)
 
@@ -158,22 +163,21 @@ class MyWindow(Gtk.Window):
 
     def on_add_clicked(self, widget):
         tagName = self.tag_edit.get_text().strip()
+        tagValue = self.value_edit.get_text().strip()
         if len(tagName) == 0:
             self.displayError("Enter a tag name!")
             return
 
         tagRow = self.findTag(tagName)
 
-        if tagRow and tagRow[TagCol.TAGGED]: # already tagged
+        if self.tagFile(tagName, tagValue):
             self.tag_edit.set_text("")
-            return
-
-        if self.tagFile(tagName):
-            self.tag_edit.set_text("")
+            self.value_edit.set_text("")
             if tagRow:              # tag already exists
                 tagRow[TagCol.TAGGED] = True
+                tagRow[TagCol.VALUE] = tagValue
             else:                   # new tag
-                self.store.append([True, tagName])
+                self.store.append([True, tagName, tagValue])
 
     def findTag(self, tagName):
         """Find a tag in current listing."""
@@ -182,9 +186,9 @@ class MyWindow(Gtk.Window):
                 return row
         return None
 
-    def tagFile(self, tagName):
+    def tagFile(self, tagName, tagValue=None):
         """Tags a file and shows error message if fails."""
-        if not self.tmsu.tag(self.fileName, tagName):
+        if not self.tmsu.tag(self.fileName, tagName, tagValue):
             self.displayError("Failed to tag file.")
             return False
         return True
