@@ -143,6 +143,7 @@ class MyWindow(Gtk.Window):
 
         hbox = Gtk.Box(orientation = Gtk.Orientation.HORIZONTAL)
         self.tag_edit = Gtk.Entry()
+        self.tag_edit.set_placeholder_text("Tag")
         self.tag_edit.connect('activate', self.on_add_clicked)
         completion = Gtk.EntryCompletion(model=self.store)
         completion.set_text_column(TagCol.NAME)
@@ -150,6 +151,7 @@ class MyWindow(Gtk.Window):
         self.tag_edit.set_completion(completion)
 
         self.value_edit = Gtk.Entry()
+        self.value_edit.set_placeholder_text("Value")
         self.value_edit.connect('activate', self.on_add_clicked)
 
         self.add_button = Gtk.Button(label = "Add")
