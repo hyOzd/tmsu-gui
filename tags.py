@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
+from gi.repository import Gtk, Gdk
 
 import sys, os, enum
 import subprocess as sp
@@ -76,6 +76,14 @@ class Tmsu:
             print("Failed to get value list.")
             return False
 
+    def delete(self, tagName):
+        try:
+            self._cmd('delete {}'.format(tagName))
+            return True
+        except sp.CalledProcessError as e:
+            print("Failed to delete tag: {}".format(tagName))
+            return False
+
     def _cmd(self, cmd):
         return sp.check_output('tmsu ' + cmd, shell=True).decode('utf-8')
 
@@ -114,6 +122,7 @@ class MyWindow(Gtk.Window):
         col = Gtk.TreeViewColumn("", cell, active=TagCol.TAGGED)
         col.set_sort_column_id(TagCol.TAGGED)
         self.list_widget.append_column(col)
+        self.list_widget.connect('key-press-event', self.on_key_press)
 
         # tag name column
         cell = Gtk.CellRendererText(editable=True)
@@ -215,6 +224,29 @@ class MyWindow(Gtk.Window):
             else:                   # new tag
                 self.store.append([True, tagName, tagValue])
 
+    def on_key_press(self, widget, ev):
+        key = Gdk.keyval_name(ev.keyval)
+        if key == 'Delete':
+            self.on_delete_key()
+            return True
+        return False
+
+    def on_delete_key(self):
+        sel = self.list_widget.get_selection()
+        mod, it = sel.get_selected()
+        tagName = mod.get_value(it, TagCol.NAME)
+
+        # ask confirmation
+        msg = 'Are you sure to delete tag "{}"?'.format(tagName)
+        dialog = Gtk.MessageDialog(
+            self, Gtk.DialogFlags.MODAL, Gtk.MessageType.WARNING,
+            Gtk.ButtonsType.OK_CANCEL, msg)
+        r = dialog.run()
+        dialog.destroy()
+
+        if r == Gtk.ResponseType.OK and self.deleteTag(tagName):
+            mod.remove(it)
+
     def findTag(self, tagName):
         """Find a tag in current listing."""
         for row in self.store:
@@ -255,6 +287,13 @@ class MyWindow(Gtk.Window):
         for tag in allTags:
             if not tag in fileTagNames:
                 self.store.append([False, tag, ""])
+
+    def deleteTag(self, tagName):
+        """Deletes a tag and shows error if fails."""
+        if not self.tmsu.delete(tagName):
+            self.displayError("Failed to delete tag: {}".format(tagName))
+            return False
+        return True
 
     def displayError(self, msg):
         """Display given error message in a message box."""
