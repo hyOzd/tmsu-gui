@@ -162,6 +162,9 @@ class MyWindow(Gtk.Window):
         self.loadTags()
 
     def on_cell_toggled(self, widget, path):
+        self.toggleTag(path)
+
+    def toggleTag(self, path):
         tagName = self.store[path][TagCol.NAME]
         isTagged = self.store[path][TagCol.TAGGED]
         if not isTagged:
@@ -231,6 +234,9 @@ class MyWindow(Gtk.Window):
         if key == 'Delete':
             self.on_delete_key()
             return True
+        elif key == 'space':
+            self.on_space_key()
+            return True
         return False
 
     def on_delete_key(self):
@@ -248,6 +254,11 @@ class MyWindow(Gtk.Window):
 
         if r == Gtk.ResponseType.OK and self.deleteTag(tagName):
             mod.remove(it)
+
+    def on_space_key(self):
+        sel = self.list_widget.get_selection()
+        mod, it = sel.get_selected()
+        self.toggleTag(mod.get_path(it))
 
     def findTag(self, tagName):
         """Find a tag in current listing."""
