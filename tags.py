@@ -68,6 +68,14 @@ class Tmsu:
             print("Failed to rename tag.")
             return False
 
+    def values(self, tagName=None):
+        try:
+            r = self._cmd('values {}'.format(tagName if tagName else ""))
+            return r.split()
+        except sp.CalledProcessError as e:
+            print("Failed to get value list.")
+            return False
+
     def _cmd(self, cmd):
         return sp.check_output('tmsu ' + cmd, shell=True).decode('utf-8')
 
@@ -118,6 +126,7 @@ class MyWindow(Gtk.Window):
         # tag value column
         cell = Gtk.CellRendererText(editable=True)
         cell.connect("edited", self.on_tagValue_edited)
+        cell.connect("editing-started", self.on_tagValue_editing_started)
         col = Gtk.TreeViewColumn("Value", cell, text=TagCol.VALUE)
         col.set_expand(True)
         col.set_sort_column_id(TagCol.VALUE)
@@ -166,12 +175,24 @@ class MyWindow(Gtk.Window):
         tagName = self.store[path][TagCol.NAME]
         isTagged = self.store[path][TagCol.TAGGED]
         oldValue = self.store[path][TagCol.VALUE]
-        if isTagged and (not oldValue or not value):        # not a value tag, untag to prevent duplicate
+        if isTagged:        # untag to prevent duplicate
             if not self.untagFile(tagName, oldValue):
                 return
         if self.tagFile(tagName, value):
             self.store[path][TagCol.VALUE] = value
             self.store[path][TagCol.TAGGED] = True
+
+    def on_tagValue_editing_started(self, widget, editable, path):
+        tagName = self.store[path][TagCol.NAME]
+        options = self.tmsu.values(tagName)
+        if options:
+            store = Gtk.ListStore(str)
+            for val in options:
+                store.append([val])
+            completion = Gtk.EntryCompletion(model=store)
+            completion.set_text_column(0)
+            completion.set_inline_completion(True)
+            editable.set_completion(completion)
 
     def on_add_clicked(self, widget):
         tagName = self.tag_edit.get_text().strip()
